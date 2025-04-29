@@ -6,7 +6,7 @@
   "type": "module",
   "license": "MIT",
   "dependencies": {
-    "@chrom-ar/waku-client": "file:../waku-client",
+    "@chrom-ar/waku-client": "^1.0.0",
     "@solana/web3.js": "^1.98.0",
     "commander": "13.1.0",
     "dotenv": "16.3.1",
@@ -18,16 +18,22 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.25.1",
     "@types/dotenv": "8.2.0",
     "@types/node": "22.14.1",
+    "eslint": "^9.25.1",
+    "jiti": "^2.4.2",
     "ts-node": "10.9.2",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "typescript-eslint": "^8.31.0"
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
-    "prepublishOnly": "npm run build",
     "cli": "node --loader ts-node/esm ./bin/cli.ts",
+    "dev": "tsc --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepublishOnly": "npm run build",
     "test": "vitest run"
   }
 }

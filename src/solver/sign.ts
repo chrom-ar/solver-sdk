@@ -1,13 +1,13 @@
-import { privateKeyToAccount } from 'viem/accounts';
-import { Keypair } from '@solana/web3.js';
+import { privateKeyToAccount } from "viem/accounts";
+import { Keypair } from "@solana/web3.js";
 import nacl from "tweetnacl";
-import tweetnaclUtils from 'tweetnacl-util';
+import tweetnaclUtils from "tweetnacl-util";
 
 /**
  * Takes a valid transaction object and returns a "ready to broadcast" result
  *   that includes the transaction, signature, and the signer (public address).
  */
-export async function signProposal(proposal: any, config: any): Promise<object | null> {
+export async function signProposal(proposal: unknown, config: { PRIVATE_KEY: string }): Promise<object | null> {
   if (!proposal) {
     return null;
   }
@@ -18,7 +18,7 @@ export async function signProposal(proposal: any, config: any): Promise<object |
     return {
       proposal,
       signature,
-      signer
+      signer,
     };
   } catch (e) {
     console.error("Signing", e);
@@ -35,7 +35,7 @@ export async function signPayload(payload: object, config: { PRIVATE_KEY: string
   const key = config.PRIVATE_KEY;
   const payloadString = JSON.stringify(payload);
 
-  if (typeof key === 'string' && key.startsWith("0x")) {
+  if (typeof key === "string" && key.startsWith("0x")) {
     return signWithEvm(payloadString, key);
   } else {
     return signWithSolana(payloadString, key);
@@ -49,7 +49,7 @@ async function signWithEvm(payloadString: string, privateKey: string): Promise<{
 
   // This is already a hex string
   const signature = await account.signMessage({
-    message: payloadString
+    message: payloadString,
   });
 
   return { signature, signer };
@@ -58,17 +58,17 @@ async function signWithEvm(payloadString: string, privateKey: string): Promise<{
 async function signWithSolana(payloadString: string, privateKey: string): Promise<{ signature: string; signer: string }> {
   const account = Keypair.fromSecretKey(
     new Uint8Array(
-      JSON.parse(privateKey)
-    )
+      JSON.parse(privateKey),
+    ),
   );
   const signer = account.publicKey.toBase58();
   const signature = Buffer.from(
     // This returns a Uint8Array signature
     nacl.sign.detached(
       tweetnaclUtils.decodeUTF8(payloadString),
-      account.secretKey
-    )
-  ).toString('base64');
+      account.secretKey,
+    ),
+  ).toString("base64");
 
   return { signature, signer };
 }

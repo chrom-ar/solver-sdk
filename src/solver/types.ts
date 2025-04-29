@@ -1,11 +1,10 @@
-import { encodeFunctionData } from 'viem';
-import { z } from 'zod';
+import { z } from "zod";
 
 export const TransactionSchema = z.object({
   chainId: z.number(),
   to: z.string(),
   value: z.number(),
-  data: z.string()
+  data: z.string(),
 });
 
 // Zod schema for ProposalResponse
