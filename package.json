@@ -1,10 +1,15 @@
 {
   "name": "@chrom-ar/solver-sdk",
+  "description": "Chroma Solvers SDK",
   "version": "1.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "dependencies": {
     "@chrom-ar/waku-client": "^1.0.0",
     "@solana/web3.js": "^1.98.0",
@@ -35,5 +40,23 @@
     "lint:fix": "eslint . --fix",
     "prepublishOnly": "npm run build",
     "test": "vitest run"
+  },
+  "author": "Chroma",
+  "homepage": "https://chrom.ar",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chrom-ar/solver-sdk"
+  },
+  "keywords": [],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   }
 }
