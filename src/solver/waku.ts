@@ -63,7 +63,7 @@ export class WakuTransport {
 
       this.initialized = true;
 
-      this.logger.info("[WakuTransport] Initialization complete.");
+      this.logger.debug("[WakuTransport] Initialization complete.");
     } catch (error) {
       this.logger.error(error, "[WakuTransport] Initialization failed.");
       throw error; // Re-throw error to indicate failure
@@ -119,11 +119,11 @@ export class WakuTransport {
       const response = await this.buildResponse(event);
 
       if (!response) {
-        this.logger.info(`[WakuTransport] No response generated for public request ${event.replyTo || "unknown"}`);
+        this.logger.debug(`[WakuTransport] No response generated for public request ${event.replyTo || "unknown"}`);
         return;
       }
 
-      this.logger.info(`[WakuTransport] Sending public response to ${event.replyTo}`);
+      this.logger.debug(`[WakuTransport] Sending public response to ${event.replyTo}`);
 
       await this.waku!.sendMessage(response, event.replyTo, event.replyTo);
     });
@@ -155,7 +155,7 @@ export class WakuTransport {
         }
         const body = { signer, signature, signerPubKey: this.waku!.publicKey };
 
-        this.logger.info(`[WakuTransport] Sending handshake ACK to ${event.replyTo}`);
+        this.logger.debug(`[WakuTransport] Sending handshake ACK to ${event.replyTo}`);
 
         // Pass the non-null publicKey
         await this.waku!.sendMessage(body, event.replyTo, this.waku!.publicKey);
@@ -188,11 +188,11 @@ export class WakuTransport {
       const response = await this.buildResponse(event);
 
       if (!response) {
-        this.logger.info(`[WakuTransport] No response generated for confidential request ${event.replyTo}`);
+        this.logger.debug(`[WakuTransport] No response generated for confidential request ${event.replyTo}`);
         return;
       }
 
-      this.logger.info(`[WakuTransport] Sending confidential response to ${event.replyTo}`);
+      this.logger.debug(`[WakuTransport] Sending confidential response to ${event.replyTo}`);
 
       // Ensure publicKey is non-null for sending encrypted message
       if (!this.waku!.publicKey) {
@@ -203,6 +203,6 @@ export class WakuTransport {
       await this.waku!.sendMessage(response, event.replyTo, this.waku!.publicKey, event.body.signerPubKey);
     }, { encrypted: true, expirationSeconds: 60 * 60 * 24 }); // Example: 24 hours expiration
 
-    this.logger.info(`[WakuTransport] Subscribed to confidential topic: ${this.waku!.publicKey}`);
+    this.logger.debug(`[WakuTransport] Subscribed to confidential topic: ${this.waku!.publicKey}`);
   }
 }
