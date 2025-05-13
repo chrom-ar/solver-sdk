@@ -35,7 +35,7 @@ yarn add @chrom-ar/solver-sdk
 
 ## Configuration
 
-This SDK is configured using environment variables. Create a `.env` file in the root of your project:
+This SDK is configured using environment variables. Copy `.env.example` to `.env` file in the root of your project:
 
 ```dotenv
 # REQUIRED: Your solver's private key (hex format, 0x prefix)
