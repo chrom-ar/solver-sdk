@@ -29,9 +29,9 @@ export const ProposalResponseSchema = z.object({
   partialTransactions: z.array(PartialTransactionSchema).optional(),
 }).refine((data) => {
   return (data.transactions && data.transactions.length > 0) ||
-    (data.partialTransactions && data.partialTransactions?.length > 0)
+    (data.partialTransactions && data.partialTransactions?.length > 0);
 }, {
-  message: 'Either transactions or partialTransactions must be provided'
+  message: "Either transactions or partialTransactions must be provided",
 });
 
 export const BodyMessageSchema = z.object({
