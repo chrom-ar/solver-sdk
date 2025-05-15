@@ -2,9 +2,8 @@
 
 A starter SDK for building **Solvers** for the Chroma network.
 
-[![Node.js CI](https://github.com/actions/workflows/node.js.yml/badge.svg)](https://github.com/actions/workflows/node.js.yml) <!-- Placeholder: Replace with actual CI badge -->
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](...) <!-- Placeholder: Replace with actual test coverage badge -->
-[![npm version](https://badge.fury.io/js/solver-starter.svg)](https://badge.fury.io/js/solver-starter) <!-- Placeholder: Update if published -->
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/chrom-ar/solver-sdk)
+[![npm version](https://badge.fury.io/js/@chrom-ar%2Fsolver-sdk.svg)](https://badge.fury.io/js/@chrom-ar%2Fsolver-sdk.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
@@ -37,20 +36,6 @@ yarn add @chrom-ar/solver-sdk
 
 This SDK is configured using environment variables. Copy `.env.example` to `.env` file in the root of your project:
 
-```dotenv
-# REQUIRED: Your solver's private key (hex format, 0x prefix)
-SOLVER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
-
-# OPTIONAL: Waku encryption key (must match PRIVATE_KEY if provided)
-# Used for sending/receiving confidential messages
-# WAKU_ENCRYPTION_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
-
-# REQUIRED: Comma-separated list of message 'type' values your solver will handle (case-insensitive)
-# Example: AVAILABLE_TYPES=YIELD,SWAP,TRANSFER
-AVAILABLE_TYPES=YIELD
-```
-
-
 **Security Note:** Never commit your `.env` file containing private keys to version control. Add `.env` to your `.gitignore` file.
 
 ## Getting Started
@@ -71,8 +56,8 @@ AVAILABLE_TYPES=YIELD
             // Construct the response based on your logic
             const proposal: ProposalResponse = {
                 description: `Proposal for handling ${messageBody.amount} ${messageBody.fromToken}`,
-                titles: ["Step 1", "Step 2"],
-                calls: ["Description of step 1", "Description of step 2"],
+                titles: ["Short Title TX 1", "Short Title TX 2"],
+                calls: ["Description of tx 1", "Description of tx 2"],
                 transactions: [/* transaction objects */]
             };
             return proposal;
