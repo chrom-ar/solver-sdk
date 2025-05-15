@@ -3,8 +3,21 @@ import { z } from "zod";
 export const TransactionSchema = z.object({
   chainId: z.number(),
   to: z.string(),
-  value: z.number(),
+  value: z.number().or(z.string()),
   data: z.string(),
+  gasLimit: z.number().or(z.string()).optional(),
+  gasPrice: z.number().or(z.string()).optional(),
+});
+
+export const PartialTransactionSchema = z.object({
+  chainId: z.number(),
+  to: z.string(),
+  value: z.number().or(z.string()).optional(),
+  data: z.string().optional(),
+  gasLimit: z.number().or(z.string()).optional(),
+  gasPrice: z.number().or(z.string()).optional(),
+  callData: z.any(), // Instructions for data
+  callValue: z.any(), // Instructions for value
 });
 
 // Zod schema for ProposalResponse
@@ -12,13 +25,19 @@ export const ProposalResponseSchema = z.object({
   description: z.string(),
   titles: z.array(z.string()),
   calls: z.array(z.string()),
-  transactions: z.array(TransactionSchema),
+  transactions: z.array(TransactionSchema).optional(),
+  partialTransactions: z.array(PartialTransactionSchema).optional(),
+}).refine((data) => {
+  return (data.transactions && data.transactions.length > 0) ||
+    (data.partialTransactions && data.partialTransactions?.length > 0)
+}, {
+  message: 'Either transactions or partialTransactions must be provided'
 });
 
 export const BodyMessageSchema = z.object({
   type: z.string(),
-  amount: z.string(),
-  fromToken: z.string(),
+  amount: z.string().optional(),
+  fromToken: z.string().optional(),
   fromChain: z.string(),
   fromAddress: z.string().optional(),
   toToken: z.string().optional(),
@@ -59,4 +78,4 @@ export const SolverConfigSchema = z.object({
   WAKU_ENCRYPTION_PRIVATE_KEY: z.string().optional(),
   AVAILABLE_TYPES: z.array(z.string()),
   handleMessage: handleMessageSchema,
-}); 
+});

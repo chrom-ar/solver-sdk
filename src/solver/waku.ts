@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   handleMessageSchema,
   SolverConfigSchema,
+  ProposalResponseSchema,
   type ProposalResponse,
   type MessageResponse,
   type WakuMessage,
@@ -91,6 +92,8 @@ export class WakuTransport {
       const proposal: ProposalResponse | null = await this.config.handleMessage(event);
 
       if (proposal) {
+        ProposalResponseSchema.parse(proposal); // Ensure proposal matches the schema
+
         return (await signProposal(proposal, this.config) as MessageResponse);
       }
 
