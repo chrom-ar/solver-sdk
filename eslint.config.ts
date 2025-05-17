@@ -17,12 +17,15 @@ export default tseslint.config(
     },
     rules: {
       "comma-dangle": ["error", "always-multiline"],
+      "curly": ["error", "all"],
       "eol-last": ["error", "always"],
+      "func-style": ["error", "expression"],
+      "indent": ["error", 2],
       "key-spacing": ["error", { beforeColon: false, afterColon: true }],
       "no-multiple-empty-lines": ["error", { max: 1, maxEOF: 1 }],
+      "prefer-const": ["error", { destructuring: "all" }],
       "quotes": ["error", "double"],
       "semi": ["error", "always"],
-      "indent": ["error", 2],
     },
   },
 );

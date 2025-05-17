@@ -7,7 +7,7 @@ import tweetnaclUtils from "tweetnacl-util";
  * Takes a valid transaction object and returns a "ready to broadcast" result
  *   that includes the transaction, signature, and the signer (public address).
  */
-export async function signProposal(proposal: unknown, config: { PRIVATE_KEY: string }): Promise<object | null> {
+export const signProposal = async (proposal: unknown, config: { PRIVATE_KEY: string }): Promise<object | null> => {
   if (!proposal) {
     return null;
   }
@@ -24,14 +24,14 @@ export async function signProposal(proposal: unknown, config: { PRIVATE_KEY: str
     console.error("Signing", e);
     return null;
   }
-}
+};
 
 /**
  * Helper to sign an arbitrary JSON payload using the configured PRIVATE_KEY.
  * This is a simplistic approach that signs a stringified version of `payload`.
  * For real-world usage, consider EIP-712 or structured data hashing.
  */
-export async function signPayload(payload: object, config: { PRIVATE_KEY: string }): Promise<{ signature: string; signer: string }> {
+export const signPayload = async (payload: object, config: { PRIVATE_KEY: string }): Promise<{ signature: string; signer: string }> => {
   const key = config.PRIVATE_KEY;
   const payloadString = JSON.stringify(payload);
 
@@ -40,9 +40,9 @@ export async function signPayload(payload: object, config: { PRIVATE_KEY: string
   } else {
     return signWithSolana(payloadString, key);
   }
-}
+};
 
-async function signWithEvm(payloadString: string, privateKey: string): Promise<{ signature: string; signer: string }> {
+const signWithEvm = async (payloadString: string, privateKey: string): Promise<{ signature: string; signer: string }> => {
   const account = privateKeyToAccount(privateKey as `0x${string}`);
 
   const signer = account.address;
@@ -53,9 +53,9 @@ async function signWithEvm(payloadString: string, privateKey: string): Promise<{
   });
 
   return { signature, signer };
-}
+};
 
-async function signWithSolana(payloadString: string, privateKey: string): Promise<{ signature: string; signer: string }> {
+const signWithSolana = async (payloadString: string, privateKey: string): Promise<{ signature: string; signer: string }> => {
   const account = Keypair.fromSecretKey(
     new Uint8Array(
       JSON.parse(privateKey),
@@ -71,4 +71,4 @@ async function signWithSolana(payloadString: string, privateKey: string): Promis
   ).toString("base64");
 
   return { signature, signer };
-}
+};
