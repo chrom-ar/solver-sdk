@@ -50,7 +50,7 @@ export const BodyMessageSchema = z.object({
   signerPubKey: z.string().optional(),
 });
 
-export const WakuMessageSchema = z.object({
+const WakuMessageSchema = z.object({
   timestamp: z.number(),
   replyTo: z.string(),
   body: BodyMessageSchema,

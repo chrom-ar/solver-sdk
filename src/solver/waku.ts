@@ -1,4 +1,4 @@
-import WakuClient, { Logger } from "@chrom-ar/waku-client";
+import WakuClient, { Logger, WakuMessageEvent } from "@chrom-ar/waku-client";
 import { signPayload, signProposal } from "./sign.js";
 import { pino } from "pino";
 import { z } from "zod";
@@ -79,7 +79,7 @@ export class WakuTransport {
     this.initialized = false;
   }
 
-  private validateMessageType(event: { body: { type: string } }) {
+  private validateMessageType(event: WakuMessageEvent) {
     if (this.config.AVAILABLE_TYPES.length === 0) {
       return true;
     }
@@ -87,7 +87,7 @@ export class WakuTransport {
     return this.config.AVAILABLE_TYPES.includes(event.body.type.toUpperCase());
   }
 
-  private async buildResponse(event: WakuMessage): Promise<MessageResponse | null> {
+  private async buildResponse(event: WakuMessageEvent): Promise<MessageResponse | null> {
     try {
       const proposal: ProposalResponse | null = await this.config.handleMessage(event);
 
@@ -111,7 +111,7 @@ export class WakuTransport {
 
   private subscribeToPublicMessages() {
     // Subscribe to the default topic for public requests
-    this.waku!.subscribe("", async (event: WakuMessage) => {
+    this.waku!.subscribe("", async (event: WakuMessageEvent) => {
       this.logger.debug("[WakuTransport] Received public message:", event);
 
       if (!this.validateMessageType(event)) {
@@ -129,7 +129,7 @@ export class WakuTransport {
       this.logger.debug(`[WakuTransport] Sending public response to ${event.replyTo}`);
 
       await this.waku!.sendMessage(response, event.replyTo, event.replyTo);
-    });
+    }, { expirationSeconds: Number.MAX_SAFE_INTEGER });
   }
 
   // Handshake messages are only used for encrypted communication
@@ -140,7 +140,7 @@ export class WakuTransport {
     }
 
     // Subscribe to the 'handshake' topic for confidential messages initiation
-    this.waku!.subscribe("handshake", async (event: { replyTo: string, body: { type: string } }) => {
+    this.waku!.subscribe("handshake", async (event: WakuMessageEvent) => {
       this.logger.debug("[WakuTransport] Received handshake message:", event);
       const { body: { type }, replyTo } = event;
 
@@ -165,7 +165,7 @@ export class WakuTransport {
       } catch (error) {
         this.logger.error(error, `[WakuTransport] Error signing handshake ACK for ${event.replyTo}`);
       }
-    });
+    }, { expirationSeconds: Number.MAX_SAFE_INTEGER });
   }
 
   private subscribeToConfidentialMessages() {
