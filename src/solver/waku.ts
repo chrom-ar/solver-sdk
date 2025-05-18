@@ -1,24 +1,25 @@
-import WakuClient, { Logger } from "@chrom-ar/waku-client";
-import { signPayload, signProposal } from "./sign.js";
-import { pino } from "pino";
+import WakuClient from "@chrom-ar/waku-client";
+import { Logger } from "@chrom-ar/logger";
 import { z } from "zod";
+
+import { signPayload, signProposal } from "./sign.js";
 import {
-  handleMessageSchema,
   SolverConfigSchema,
   ProposalResponseSchema,
   type ProposalResponse,
   type MessageResponse,
-  type WakuMessage,
+  type Message,
+  type HandleMessage,
 } from "./types.js";
 
 export class WakuTransport {
   private initialized = false;
   private waku: WakuClient | undefined;
   private config: z.infer<typeof SolverConfigSchema>;
-  private logger: pino.Logger;
+  private logger: Logger;
   private encryptionEnabled: boolean = false;
 
-  constructor(handleMessage: typeof handleMessageSchema, logger?: pino.Logger) {
+  constructor(handleMessage: HandleMessage, logger?: Logger) {
     this.config = SolverConfigSchema.parse({
       PRIVATE_KEY: process.env.SOLVER_PRIVATE_KEY,
       WAKU_ENCRYPTION_PRIVATE_KEY: process.env.WAKU_ENCRYPTION_PRIVATE_KEY,
@@ -35,11 +36,11 @@ export class WakuTransport {
       throw new Error("PRIVATE_KEY and WAKU_ENCRYPTION_PRIVATE_KEY MUST be the same if both are provided.");
     }
 
-    this.logger = logger || pino({ level: process.env.LOG_LEVEL || "info" });
+    this.logger = logger || console;
     this.encryptionEnabled = !!this.config.WAKU_ENCRYPTION_PRIVATE_KEY;
   }
 
-  public static async start(handleMessage: typeof handleMessageSchema, logger?: pino.Logger): Promise<WakuTransport> {
+  public static async start(handleMessage: HandleMessage, logger?: Logger): Promise<WakuTransport> {
     const wakuTransport = new WakuTransport(handleMessage, logger);
     await wakuTransport.initialize();
 
@@ -87,7 +88,7 @@ export class WakuTransport {
     return this.config.AVAILABLE_TYPES.includes(event.body.type.toUpperCase());
   }
 
-  private async buildResponse(event: WakuMessage): Promise<MessageResponse | null> {
+  private async buildResponse(event: Message): Promise<MessageResponse | null> {
     try {
       const proposal: ProposalResponse | null = await this.config.handleMessage(event);
 
@@ -111,7 +112,7 @@ export class WakuTransport {
 
   private subscribeToPublicMessages() {
     // Subscribe to the default topic for public requests
-    this.waku!.subscribe("", async (event: WakuMessage) => {
+    this.waku!.subscribe("", async (event: Message) => {
       this.logger.debug("[WakuTransport] Received public message:", event);
 
       if (!this.validateMessageType(event)) {
@@ -126,9 +127,10 @@ export class WakuTransport {
         return;
       }
 
-      this.logger.debug(`[WakuTransport] Sending public response to ${event.replyTo}`);
-
-      await this.waku!.sendMessage(response, event.replyTo, event.replyTo);
+      if (event.replyTo) {
+        this.logger.debug(`[WakuTransport] Sending public response to ${event.replyTo}`);
+        await this.waku!.sendMessage(response, event.replyTo, event.replyTo);
+      }
     });
   }
 
@@ -175,7 +177,7 @@ export class WakuTransport {
     }
 
     // Subscribe to own public key topic for encrypted confidential messages
-    this.waku!.subscribe(this.waku!.publicKey!, async (event: WakuMessage) => {
+    this.waku!.subscribe(this.waku!.publicKey!, async (event: Message) => {
       this.logger.debug("[WakuTransport] Received confidential message:", event);
 
       if (!event.body.signerPubKey) {

@@ -67,11 +67,13 @@ export type ProposalResponse = z.infer<typeof ProposalResponseSchema>;
 export type MessageResponse = z.infer<typeof MessageResponseSchema>;
 
 export type WakuMessage = z.infer<typeof WakuMessageSchema>;
+export type Message = WakuMessage;
 
 // Zod schema for the handler function itself
 export const handleMessageSchema = z.function()
   .args(WakuMessageSchema) // Expects a validated BodyMessage object
   .returns(z.promise(z.union([ProposalResponseSchema, z.null()]))); // Returns a promise that resolves to ProposalResponse or null
+export type HandleMessage = z.infer<typeof handleMessageSchema>;
 
 export const SolverConfigSchema = z.object({
   PRIVATE_KEY: z.string(),

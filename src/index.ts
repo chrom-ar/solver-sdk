@@ -1,7 +1,8 @@
 import { WakuTransport } from "./solver/waku.js";
-import { handleMessageSchema } from "./solver/types.js";
+import { HandleMessage } from "./solver/types.js";
 import dotenv from "dotenv";
-import pino from "pino";
+import { Logger } from "@chrom-ar/utils";
+
 export * from "./solver/types.js";
 
 dotenv.config(); // Load .env file
@@ -13,7 +14,7 @@ export default class SolverSDK {
     this.wakuService = wakuService;
   }
 
-  public static async start(handleFn: typeof handleMessageSchema, logger?: pino.Logger) {
+  public static async start(handleFn: HandleMessage, logger?: Logger) {
     const wakuService = await WakuTransport.start(handleFn, logger);
 
     return new SolverSDK(wakuService);

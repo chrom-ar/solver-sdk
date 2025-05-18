@@ -16,6 +16,10 @@ A starter SDK for building **Solvers** for the Chroma network.
 *   **Encryption (Optional):** Supports confidential messaging if `WAKU_ENCRYPTION_PRIVATE_KEY` is provided.
 *   **Typed:** Built with TypeScript and uses Zod for runtime validation.
 
+## Example
+
+Follow the working example in [Solver-example](https://github.com/chrom-ar/solver-example)
+
 ## Prerequisites
 
 *   Node.js (v18 or higher recommended)
@@ -44,7 +48,7 @@ This SDK is configured using environment variables. Copy `.env.example` to `.env
 
     ```typescript
     // src/mySolverLogic.ts
-    import { BodyMessage, ProposalResponse } from 'solver-starter'; // Adjust path as needed
+    import { type BodyMessage, type ProposalResponse } from '@chrom-ar/solver-sdk';
 
     export async function handleYieldRequest(messageBody: BodyMessage): Promise<ProposalResponse | null> {
         console.log("Handling message:", messageBody);
@@ -72,7 +76,7 @@ This SDK is configured using environment variables. Copy `.env.example` to `.env
 
     ```typescript
     // src/main.ts
-    import SolverSDK from 'solver-starter'; // Adjust path as needed
+    import SolverSDK from '@chrom-ar/solver-sdk'; // Adjust path as needed
     import { handleYieldRequest } from './mySolverLogic.js';
     import dotenv from 'dotenv';
     import { pino } from 'pino';
