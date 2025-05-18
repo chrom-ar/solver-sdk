@@ -1,5 +1,5 @@
-import WakuClient from "@chrom-ar/waku-client";
-import { Logger } from "@chrom-ar/logger";
+import { Logger } from "@chrom-ar/utils";
+import WakuClient, { WakuMessageEvent } from "@chrom-ar/waku-client";
 import { z } from "zod";
 
 import { signPayload, signProposal } from "./sign.js";
@@ -16,7 +16,7 @@ export class WakuTransport {
   private initialized = false;
   private waku: WakuClient | undefined;
   private config: z.infer<typeof SolverConfigSchema>;
-  private logger: Logger;
+  private logger: Logger | Console;
   private encryptionEnabled: boolean = false;
 
   constructor(handleMessage: HandleMessage, logger?: Logger) {
@@ -36,7 +36,7 @@ export class WakuTransport {
       throw new Error("PRIVATE_KEY and WAKU_ENCRYPTION_PRIVATE_KEY MUST be the same if both are provided.");
     }
 
-    this.logger = logger || console;
+    this.logger = logger ?? console;
     this.encryptionEnabled = !!this.config.WAKU_ENCRYPTION_PRIVATE_KEY;
   }
 
@@ -65,9 +65,9 @@ export class WakuTransport {
 
       this.initialized = true;
 
-      this.logger.debug("[WakuTransport] Initialization complete.");
-    } catch (error) {
-      this.logger.error(error, "[WakuTransport] Initialization failed.");
+      this.logger.info("[WakuTransport] Initialization complete.");
+    } catch (error: unknown) {
+      this.logger.error("[WakuTransport] Initialization failed.", error);
       throw error; // Re-throw error to indicate failure
     }
   }
@@ -80,7 +80,7 @@ export class WakuTransport {
     this.initialized = false;
   }
 
-  private validateMessageType(event: { body: { type: string } }) {
+  private validateMessageType(event: WakuMessageEvent<Record<string, unknown>>) {
     if (this.config.AVAILABLE_TYPES.length === 0) {
       return true;
     }
@@ -100,9 +100,9 @@ export class WakuTransport {
 
       return null;
     } catch (error) {
-      this.logger.error({ error, body: event.body }, "[WakuTransport] Error validating message body or building response");
+      this.logger.error("[WakuTransport] Error validating message body or building response", { error, body: event.body });
       if (error instanceof z.ZodError) {
-        this.logger.warn({ errors: error.errors }, "[WakuTransport] Invalid message body received");
+        this.logger.warn("[WakuTransport] Invalid message body received", { errors: error.errors });
       } else {
         console.error("Error building response:", error);
       }
@@ -112,8 +112,8 @@ export class WakuTransport {
 
   private subscribeToPublicMessages() {
     // Subscribe to the default topic for public requests
-    this.waku!.subscribe("", async (event: Message) => {
-      this.logger.debug("[WakuTransport] Received public message:", event);
+    this.waku!.subscribe("", async (event: WakuMessageEvent<Message["body"]>) => {
+      this.logger.info("[WakuTransport] Received public message:", event);
 
       if (!this.validateMessageType(event)) {
         this.logger.warn(`[WakuTransport] Received unknown/missing type (${event.body.type}) for ${event.replyTo}`);
@@ -123,12 +123,12 @@ export class WakuTransport {
       const response = await this.buildResponse(event);
 
       if (!response) {
-        this.logger.debug(`[WakuTransport] No response generated for public request ${event.replyTo || "unknown"}`);
+        this.logger.info(`[WakuTransport] No response generated for public request ${event.replyTo || "unknown"}`);
         return;
       }
 
       if (event.replyTo) {
-        this.logger.debug(`[WakuTransport] Sending public response to ${event.replyTo}`);
+        this.logger.info(`[WakuTransport] Sending public response to ${event.replyTo}`);
         await this.waku!.sendMessage(response, event.replyTo, event.replyTo);
       }
     });
@@ -142,8 +142,8 @@ export class WakuTransport {
     }
 
     // Subscribe to the 'handshake' topic for confidential messages initiation
-    this.waku!.subscribe("handshake", async (event: { replyTo: string, body: { type: string } }) => {
-      this.logger.debug("[WakuTransport] Received handshake message:", event);
+    this.waku!.subscribe("handshake", async (event: WakuMessageEvent<Record<string, unknown>>) => {
+      this.logger.info("[WakuTransport] Received handshake message:", event);
       const { body: { type }, replyTo } = event;
 
       if (!this.validateMessageType(event)) {
@@ -160,14 +160,14 @@ export class WakuTransport {
         }
         const body = { signer, signature, signerPubKey: this.waku!.publicKey };
 
-        this.logger.debug(`[WakuTransport] Sending handshake ACK to ${event.replyTo}`);
+        this.logger.info(`[WakuTransport] Sending handshake ACK to ${event.replyTo}`);
 
         // Pass the non-null publicKey
         await this.waku!.sendMessage(body, event.replyTo, this.waku!.publicKey);
       } catch (error) {
-        this.logger.error(error, `[WakuTransport] Error signing handshake ACK for ${event.replyTo}`);
+        this.logger.error(`[WakuTransport] Error signing handshake ACK for ${event.replyTo}`, error);
       }
-    });
+    }, { expirationSeconds: Number.MAX_SAFE_INTEGER });
   }
 
   private subscribeToConfidentialMessages() {
@@ -177,8 +177,8 @@ export class WakuTransport {
     }
 
     // Subscribe to own public key topic for encrypted confidential messages
-    this.waku!.subscribe(this.waku!.publicKey!, async (event: Message) => {
-      this.logger.debug("[WakuTransport] Received confidential message:", event);
+    this.waku!.subscribe(this.waku!.publicKey!, async (event: WakuMessageEvent<Message["body"]>) => {
+      this.logger.info("[WakuTransport] Received confidential message:", event);
 
       if (!event.body.signerPubKey) {
         this.logger.error(`[WakuTransport] Cannot send encrypted response: Missing sender public key (signerPubKey) in confidential request from ${event.replyTo}`);
@@ -193,11 +193,11 @@ export class WakuTransport {
       const response = await this.buildResponse(event);
 
       if (!response) {
-        this.logger.debug(`[WakuTransport] No response generated for confidential request ${event.replyTo}`);
+        this.logger.info(`[WakuTransport] No response generated for confidential request ${event.replyTo}`);
         return;
       }
 
-      this.logger.debug(`[WakuTransport] Sending confidential response to ${event.replyTo}`);
+      this.logger.info(`[WakuTransport] Sending confidential response to ${event.replyTo}`);
 
       // Ensure publicKey is non-null for sending encrypted message
       if (!this.waku!.publicKey) {
@@ -208,6 +208,6 @@ export class WakuTransport {
       await this.waku!.sendMessage(response, event.replyTo, this.waku!.publicKey, event.body.signerPubKey);
     }, { encrypted: true, expirationSeconds: 60 * 60 * 24 }); // Example: 24 hours expiration
 
-    this.logger.debug(`[WakuTransport] Subscribed to confidential topic: ${this.waku!.publicKey}`);
+    this.logger.info(`[WakuTransport] Subscribed to confidential topic: ${this.waku!.publicKey}`);
   }
 }
