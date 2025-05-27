@@ -1,0 +1,225 @@
+# Solver SDK
+
+> Solver SDK is a TypeScript library for building **Solvers** for the Chroma network. Solvers are services that handle blockchain operations (swaps, yields, bridges, etc.) by listening to requests via the Waku decentralized messaging network, processing them with custom logic, and responding with signed transaction proposals. The SDK provides Waku integration, message validation, multi-chain transaction signing, and optional encryption for confidential operations.
+
+Things to remember when building Solvers:
+
+- Solvers are event-driven services that respond to messages, not traditional request-response APIs
+- All message schemas are validated at runtime using Zod - invalid messages are automatically rejected
+- The SDK supports both EVM (Ethereum-compatible) and Solana chains for transaction signing
+- Private keys are required for signing proposals; encryption keys are optional for confidential messaging
+- Message types can be filtered using the `AVAILABLE_TYPES` environment variable
+- Handlers should return `ProposalResponse` objects for valid requests or `null` to ignore
+- The SDK automatically handles Waku network connection, message routing, and response signing
+
+## Core Types and Schemas
+
+**BodyMessage**: Incoming request structure
+```typescript
+{
+  type: string;                    // Required: operation type (e.g., "SWAP", "YIELD")
+  amount?: string;                 // Token amount for operations
+  fromToken?: string;              // Source token symbol
+  fromChain: string;               // Required: source blockchain
+  fromAddress?: string;            // Source wallet address
+  toToken?: string;                // Destination token symbol
+  recipientAddress?: string;       // Destination wallet address
+  recipientChain?: string;         // Destination blockchain
+  description?: string;            // Operation description
+  protocol?: string;               // Target protocol name
+  protocols?: string[];            // Multiple protocols for operations
+  transactionHash?: string;        // For claim operations
+  signerPubKey?: string;           // For encrypted messaging
+}
+```
+
+**ProposalResponse**: Response structure for valid requests
+```typescript
+{
+  description: string;                        // Human-readable proposal description
+  titles: string[];                           // Short titles for each transaction
+  calls: string[];                            // Descriptions of each transaction
+  transactions?: Transaction[];               // Complete transaction objects
+  partialTransactions?: PartialTransaction[]; // Template transactions
+}
+```
+
+**Transaction**: Complete transaction ready for broadcast
+```typescript
+{
+  chainId: number;                 // Blockchain network ID
+  to: string;                      // Contract/recipient address
+  value: number | string;          // ETH/native token value
+  data: string;                    // Transaction calldata
+  gasLimit?: number | string;      // Gas limit
+  gasPrice?: number | string;      // Gas price
+}
+```
+
+## API Reference
+
+**SolverSDK**: Main entry point
+- `SolverSDK.start(handleMessage, logger?)`: Start the solver service
+- `solver.stop()`: Gracefully shutdown the solver
+
+**HandleMessage Function**: Core solver logic
+```typescript
+type HandleMessage = (message: WakuMessage) => Promise<ProposalResponse | null>;
+```
+
+**WakuTransport**: Network communication (internal)
+- Handles public, handshake, and confidential message subscriptions
+- Automatically signs and sends responses
+- Manages encryption for confidential messaging
+
+## Configuration
+
+Required environment variables:
+- `SOLVER_PRIVATE_KEY`: Private key for signing proposals (EVM: 0x-prefixed hex, Solana: JSON array)
+
+Optional environment variables:
+- `WAKU_ENCRYPTION_PRIVATE_KEY`: Private key for encrypted messaging (must match SOLVER_PRIVATE_KEY if provided)
+- `AVAILABLE_TYPES`: Comma-separated list of message types to handle (e.g., "SWAP,YIELD,BRIDGE")
+- `LOG_LEVEL`: Logging level (default: "info")
+
+## Examples
+
+**Basic Solver Implementation**:
+```typescript
+import SolverSDK, { type BodyMessage, type ProposalResponse } from '@chrom-ar/solver-sdk';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+async function handleYieldRequest(message: WakuMessage): Promise<ProposalResponse | null> {
+  const { body } = message;
+
+  // Only handle YIELD requests
+  if (body.type.toUpperCase() !== 'YIELD') {
+    return null;
+  }
+
+  // Validate required fields
+  if (!body.amount || !body.fromToken || !body.fromChain) {
+    return null;
+  }
+
+  // Build transaction for yield operation
+  const transaction = {
+    chainId: getChainId(body.fromChain),
+    to: getYieldProtocolAddress(body.fromToken),
+    value: "0",
+    data: buildYieldCalldata(body.amount, body.fromToken),
+  };
+
+  return {
+    description: `Deposit ${body.amount} ${body.fromToken} for yield`,
+    titles: ["Approve Token", "Deposit to Protocol"],
+    calls: ["Approve spending", "Deposit tokens"],
+    transactions: [approveTransaction, transaction],
+  };
+}
+
+async function main() {
+  const solver = await SolverSDK.start(handleYieldRequest);
+
+  // Handle graceful shutdown
+  process.on('SIGINT', async () => {
+    await solver.stop();
+    process.exit(0);
+  });
+}
+
+main().catch(console.error);
+```
+
+**Multi-Chain Swap Handler**:
+```typescript
+async function handleSwapRequest(message: WakuMessage): Promise<ProposalResponse | null> {
+  const { body } = message;
+
+  if (body.type.toUpperCase() !== 'SWAP') return null;
+
+  // Cross-chain swap logic
+  if (body.fromChain !== body.recipientChain) {
+    return buildBridgeProposal(body);
+  }
+
+  // Same-chain swap logic
+  return buildSwapProposal(body);
+}
+```
+
+**Error Handling Pattern**:
+```typescript
+async function robustHandler(message: WakuMessage): Promise<ProposalResponse | null> {
+  try {
+    // Validate message structure
+    if (!message.body.type) {
+      console.warn('Missing message type');
+      return null;
+    }
+
+    // Process request
+    return await processRequest(message.body);
+  } catch (error) {
+    console.error('Handler error:', error);
+    return null; // Never throw - return null to ignore
+  }
+}
+```
+
+## Development Patterns
+
+**Testing Handlers**:
+```typescript
+import { describe, it, expect } from 'vitest';
+import { BodyMessageSchema } from '@chrom-ar/solver-sdk';
+
+describe('Yield Handler', () => {
+  it('should handle valid yield requests', async () => {
+    const mockMessage = {
+      timestamp: Date.now(),
+      replyTo: 'test-topic',
+      body: {
+        type: 'YIELD',
+        amount: '100',
+        fromToken: 'USDC',
+        fromChain: 'ethereum',
+      }
+    };
+
+    const result = await handleYieldRequest(mockMessage);
+    expect(result).toBeTruthy();
+    expect(result?.transactions).toHaveLength(2);
+  });
+});
+```
+
+**Configuration Validation**:
+```typescript
+// Validate environment setup
+if (!process.env.SOLVER_PRIVATE_KEY) {
+  throw new Error('SOLVER_PRIVATE_KEY is required');
+}
+
+// Validate private key format
+const isEVM = process.env.SOLVER_PRIVATE_KEY.startsWith('0x');
+const isSolana = !isEVM;
+```
+
+**Logging Best Practices**:
+```typescript
+import { pino } from 'pino';
+
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: { colorize: true }
+  }
+});
+
+// Use structured logging
+logger.info({ messageType: body.type, amount: body.amount }, 'Processing request');
+```
